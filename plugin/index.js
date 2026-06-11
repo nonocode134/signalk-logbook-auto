@@ -52,6 +52,7 @@ module.exports = (app) => {
   // Le chemin /plugins/<id>/ est réservé par SK pour ses métadonnées JSON.
   // On monte le handler statique une seule fois au chargement du module,
   // sur un chemin libre, avant que start()/stop() soient jamais appelés.
+  app.get('/logbook', (req, res) => res.redirect(301, '/logbook/'))
   app.use('/logbook', createStaticHandler(path.join(__dirname, '../public')))
 
   // Variables réinitialisées à chaque appel de start()
