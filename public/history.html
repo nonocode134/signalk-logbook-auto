@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Historique — Logbook Auto</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ══════════ HEADER ══════════ -->
+<header class="header">
+  <a href="/logbook" class="btn btn-nav">← Logbook</a>
+  <span class="header-title">Historique</span>
+  <span class="value small" id="trip-count" style="color:var(--text-dim)">—</span>
+</header>
+
+<!-- ══════════ BARRE D'ACTIONS (visible quand sélection) ══════════ -->
+<div class="action-bar" id="action-bar" style="display:none">
+  <span class="action-bar-label" id="selection-label">0 sélectionné</span>
+  <div class="action-bar-btns">
+    <button class="btn action-btn-dl" id="btn-download" onclick="downloadSelected()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <line x1="7" y1="1" x2="7" y2="9" stroke="currentColor" stroke-width="1.5"/>
+        <polyline points="3,6 7,10 11,6" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        <line x1="2" y1="13" x2="12" y2="13" stroke="currentColor" stroke-width="1.5"/>
+      </svg>
+      Télécharger
+    </button>
+    <button class="btn action-btn-del" id="btn-delete">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <rect x="1" y="3" width="12" height="1.5" rx="0.75" fill="currentColor"/>
+        <path d="M3 3 L3 12 Q3 13 4 13 L10 13 Q11 13 11 12 L11 3" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        <line x1="5" y1="3" x2="5" y2="1" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="9" y1="3" x2="9" y2="1" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="5" y1="1" x2="9" y2="1" stroke="currentColor" stroke-width="1.5"/>
+      </svg>
+      Supprimer
+    </button>
+  </div>
+</div>
+
+<!-- ══════════ TABLEAU DES TRIPS ══════════ -->
+<div class="section trips-section">
+  <div class="trips-table-wrap">
+    <table class="trips-table">
+      <thead>
+        <tr>
+          <th class="col-check">
+            <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)">
+          </th>
+          <th class="label col-id">#</th>
+          <th class="label col-dt">Départ</th>
+          <th class="label col-dt">Arrivée</th>
+          <th class="label col-dur">Durée</th>
+          <th class="label col-dist">Distance</th>
+        </tr>
+      </thead>
+      <tbody id="trips-tbody">
+        <tr><td colspan="6" class="journal-empty" style="padding:16px 12px">Chargement…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════ PANNEAU DÉTAIL ══════════ -->
+<div class="section detail-section" id="detail-section">
+  <div class="detail-header">
+    <div class="detail-header-info">
+      <span class="label">Journal du trip</span>
+      <span class="detail-title" id="detail-title">Sélectionner un trip ci-dessus</span>
+    </div>
+    <button class="btn btn-icon" id="btn-close-detail" onclick="closeDetail()" style="display:none">✕</button>
+  </div>
+  <ul class="journal-list" id="detail-log">
+    <li class="journal-empty">Cliquez sur une ligne pour afficher le journal complet du trip.</li>
+  </ul>
+</div>
+
+<!-- ══════════ MODAL SUPPRESSION ══════════ -->
+<div id="delete-modal" class="modal-overlay" style="display:none">
+  <div class="modal-card">
+    <h2 class="modal-title" style="color:var(--accent-red)">SUPPRIMER LES TRIPS</h2>
+    <p class="delete-warning" id="delete-warning-text"></p>
+    <p class="delete-warning-sub">Cette action est irréversible. Maintenez le bouton pour confirmer.</p>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeDeleteModal()">Annuler</button>
+      <button class="btn btn-del-confirm" id="btn-confirm-delete">Maintenir pour confirmer</button>
+    </div>
+  </div>
+</div>
+
+<script src="history.js"></script>
+</body>
+</html>

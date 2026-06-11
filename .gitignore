@@ -1,0 +1,17 @@
+# Dépendances
+node_modules/
+
+# Base de données (générée à l'exécution, contient des données personnelles)
+*.db
+*.db-wal
+*.db-shm
+
+# Signal K auth cookie
+cookiefile
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# Logs npm
+npm-debug.log*
