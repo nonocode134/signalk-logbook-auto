@@ -42,6 +42,7 @@ body {
   font-size: 16px;
   font-weight: 500;
   min-width: 320px;
+  max-width: 100vw;
   overflow-x: hidden;
 }
 
@@ -65,7 +66,74 @@ body {
 
 .value.small { font-size: 22px; }
 
-/* ──── Header ──── */
+/* ──── Top Strip (remplace le header sur index) ──── */
+.top-strip {
+  background: var(--bg-surface);
+  border-bottom: 2px solid var(--border);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 50px;
+}
+
+/* Badge navstate plus compact dans le top strip */
+.top-strip .header-navstate {
+  font-size: 11px;
+  padding: 3px 7px;
+  flex-shrink: 0;
+}
+
+.top-trip {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.top-trip-main {
+  font-family: 'Barlow', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.top-trip-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* Bouton compact (top strip) */
+.btn-sm {
+  min-height: 40px;
+  min-width: 70px;
+  padding: 6px 10px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+
+/* Lien bas de page */
+.bottom-nav {
+  padding: 10px 16px 20px;
+}
+
+.btn-nav-full {
+  width: 100%;
+  justify-content: center;
+  min-height: 48px;
+  color: var(--text-secondary);
+  border-color: var(--border);
+  text-decoration: none;
+}
+
+/* ──── Header (historique) ──── */
 .header {
   background: var(--bg-surface);
   border-bottom: 2px solid var(--border);
@@ -109,20 +177,92 @@ body {
 /* ──── Status Bar ──── */
 .status-bar {
   background: var(--bg-surface);
-  border-bottom: 2px solid var(--border);
+  border-bottom: 1px solid var(--border);
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 1px;
 }
 
 .status-item {
-  padding: 10px 12px;
+  padding: 6px 10px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   border-right: 1px solid var(--border);
 }
 .status-item:last-child { border-right: none; }
+
+/* Paire de valeurs sur une ligne (SOG·COG, Vent) */
+.status-pair {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-wrap: nowrap;
+}
+
+.status-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.status-dot {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.status-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* ──── Dernière entrée journal (feedback) ──── */
+.last-entry {
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
+  padding: 5px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+}
+
+.last-entry-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.last-entry-bar {
+  width: 2px;
+  height: 14px;
+  background: var(--accent-cyan);
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+.last-entry-text {
+  font-family: 'Barlow', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.last-entry.empty .last-entry-time,
+.last-entry.empty .last-entry-bar { display: none; }
+.last-entry.empty .last-entry-text { color: var(--text-dim); font-style: italic; }
 
 /* ──── Sections ──── */
 .section {
@@ -525,6 +665,8 @@ textarea::placeholder { color: var(--text-dim); }
   flex-direction: column;
   gap: 4px;
   padding-left: 10px;
+  min-width: 0;        /* permet à la colonne 1fr de rétrécir */
+  overflow: hidden;
 }
 
 .journal-summary {
@@ -533,12 +675,15 @@ textarea::placeholder { color: var(--text-dim); }
   font-size: 15px;
   color: var(--text-primary);
   line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .journal-details {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 10px;
+  gap: 3px 8px;
   align-items: baseline;
 }
 
@@ -553,7 +698,9 @@ textarea::placeholder { color: var(--text-dim); }
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   color: var(--text-secondary);
-  white-space: nowrap;
+  white-space: normal;   /* autorise le retour à la ligne sur les longues conditions */
+  word-break: break-word;
+  min-width: 0;
 }
 
 .journal-distance {
@@ -579,19 +726,274 @@ textarea::placeholder { color: var(--text-dim); }
 }
 .value-updated { animation: pulse-update 2s ease-out forwards; }
 
+/* ══════════════════════════════════════════
+   PROPULSION — Moteur toggle + jauges voiles
+   ══════════════════════════════════════════ */
+
+:root {
+  --accent-sail:     #2ECC71;
+  --accent-sail-dim: rgba(46,204,113,0.20);
+  --accent-sail-mid: rgba(30,160,70,0.12);
+}
+
+/* ── Moteur toggle ── */
+.prop-motor-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  transition: none;
+}
+
+.prop-motor-track {
+  flex: 1;
+  height: 48px;
+  background: var(--bg-elevated);
+  border: 2px solid var(--border);
+  border-radius: 24px;
+  position: relative;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.25s, box-shadow 0.25s;
+  -webkit-tap-highlight-color: transparent;
+}
+.prop-motor-track.on {
+  border-color: var(--accent-amber);
+  box-shadow: 0 0 14px rgba(255,184,77,0.25);
+}
+
+.prop-lbl {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  pointer-events: none;
+  transition: opacity 0.22s, color 0.22s;
+  z-index: 1;
+}
+.prop-lbl-off { left: 18px; color: var(--text-secondary); }
+.prop-lbl-on  { right: 18px; color: var(--text-dim); }
+.prop-motor-track.on .prop-lbl-off { opacity: 0.35; }
+.prop-motor-track.on .prop-lbl-on  { color: var(--accent-amber); }
+
+.prop-knob {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: left 0.28s cubic-bezier(.4,0,.2,1), background 0.28s;
+  z-index: 2;
+}
+.prop-motor-track.on .prop-knob {
+  left: calc(100% - 44px);
+  background: var(--accent-amber);
+}
+
+.prop-motor-status {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dim);
+  min-width: 30px;
+  text-align: right;
+  transition: color 0.25s;
+}
+.prop-motor-row.on .prop-motor-status { color: var(--accent-amber); }
+
+/* ── Jauges côte à côte ── */
+.prop-gauges {
+  display: flex;
+  gap: 10px;
+}
+
+.prop-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.prop-col-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.prop-track {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+/* ── Segments ── */
+.prop-seg {
+  height: 60px;
+  border-radius: 5px;
+  border: 2px solid var(--border);
+  background: var(--bg-elevated);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+.prop-seg-icon {
+  flex-shrink: 0;
+  color: var(--text-dim);
+  transition: color 0.15s;
+}
+
+.prop-seg-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  transition: color 0.15s;
+}
+
+/* Remplissage sous le segment sélectionné */
+.prop-seg.fill {
+  background: var(--accent-sail-mid);
+  border-color: #1C4030;
+}
+.prop-seg.fill .prop-seg-icon { color: #42A865; }
+.prop-seg.fill .prop-seg-name { color: #42A865; }
+
+/* Segment sélectionné (sommet du remplissage) */
+.prop-seg.selected {
+  background: var(--accent-sail-dim);
+  border-color: var(--accent-sail);
+  box-shadow: 0 0 14px rgba(46,204,113,0.25), inset 0 1px 0 rgba(80,255,130,0.25);
+}
+.prop-seg.selected .prop-seg-icon { color: var(--accent-sail); }
+.prop-seg.selected .prop-seg-name { color: var(--accent-sail); }
+
+/* Ligne de surface sur le segment sélectionné */
+.prop-seg.selected::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(60,220,100,0.5) 20%,
+    rgba(46,204,113,0.95) 50%,
+    rgba(60,220,100,0.5) 80%,
+    transparent 100%);
+}
+
+.prop-seg:active { opacity: 0.7; }
+
+/* ── Bouton affalée ── */
+.prop-affaler {
+  margin-top: 6px;
+  height: 48px;
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 2px solid var(--border);
+  border-radius: 5px;
+  color: var(--text-dim);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.15s, color 0.15s;
+}
+.prop-affaler:active { opacity: 0.7; }
+.prop-affaler.current {
+  border-color: var(--border-bright);
+  color: var(--text-secondary);
+}
+
+/* ── Texte d'état ── */
+.prop-state {
+  text-align: center;
+  margin-top: 6px;
+  height: 18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  transition: color 0.2s;
+}
+.prop-state.lit { color: var(--accent-sail); }
+
 /* ──── Responsive mobile ──── */
-@media (max-width: 480px) {
-  .sail-controls { grid-template-columns: repeat(2, 1fr); }
-  .status-bar { grid-template-columns: repeat(3, 1fr); }
-  .status-item:nth-child(4),
-  .status-item:nth-child(5) { display: none; }
-  .section-grid { grid-template-columns: 1fr; }
-  .value { font-size: 22px; }
+@media (max-width: 400px) {
+  /* Header plus compact */
+  .header { padding: 9px 12px; }
+  .header-title { font-size: 16px; }
+  .header-navstate { font-size: 12px; padding: 3px 8px; }
+  #status-time { font-size: 14px; }
+
+  /* Status bar : valeurs encore plus petites */
+  .status-val { font-size: 14px; }
+  .status-item { padding: 5px 8px; }
+
+  /* Sections : padding réduit */
+  .section { padding: 10px 12px; }
+
+  /* Moteur : label plus court */
+  .prop-motor-row { gap: 8px; }
+  .prop-motor-row .label { min-width: 46px; font-size: 11px; }
+  .prop-lbl { font-size: 11px; }
+  .prop-motor-status { font-size: 12px; min-width: 24px; }
+
+  /* Jauges : segments légèrement moins hauts */
+  .prop-seg { height: 54px; }
+  .prop-seg-name { font-size: 11px; }
+
+  /* Bouton affalée */
+  .prop-affaler { height: 42px; font-size: 11px; }
+
+  /* Modal arrivée */
+  .modal-card { padding: 14px; gap: 10px; }
+  .modal-title { font-size: 15px; }
+  .modal-label { font-size: 11px; }
+  /* Profondeur 4→2 colonnes */
+  .modal-grid-4 { grid-template-columns: repeat(2, 1fr); gap: 5px; }
+  /* Type de fond 5→3 colonnes */
+  .modal-grid-5 { grid-template-columns: repeat(3, 1fr); gap: 5px; }
+  /* Boutons d'option plus compacts */
+  .modal-opt-btn { min-height: 62px; font-size: 11px; gap: 3px; padding: 6px 3px; }
+  .modal-opt-btn svg { width: 24px; height: 24px; }
+  /* Champ profondeur libre */
+  .modal-free-wrap .modal-num-input { width: 38px; font-size: 12px; }
+  /* Actions modal */
+  .modal-actions { gap: 8px; }
+  .modal-actions .btn { min-height: 44px; font-size: 13px; }
 }
 
 @media (hover: none) {
   .btn:hover { background: var(--bg-elevated); border-color: var(--border); color: var(--text-secondary); box-shadow: none; }
   .btn:active { opacity: 0.75; }
+  .prop-seg:hover { background: var(--bg-elevated); border-color: var(--border); }
 }
 
 /* ══════════════════════════════════════════
@@ -874,4 +1276,111 @@ textarea::placeholder { color: var(--text-dim); }
   .action-bar { flex-direction: column; align-items: flex-start; gap: 8px; }
   .action-bar-btns { width: 100%; }
   .action-btn-dl, .action-btn-del { flex: 1; justify-content: center; }
+}
+
+/* ══════════════════════════════════════════
+   BOUTON MODE JOUR/NUIT
+   ══════════════════════════════════════════ */
+
+.btn-mode-toggle {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 4px;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s;
+}
+.btn-mode-toggle:active { opacity: 0.7; }
+
+/* Mode sombre : affiche icône soleil (inviter à passer en mode jour) */
+.btn-mode-toggle .icon-moon { display: none; }
+
+/* Mode jour : affiche icône lune (inviter à revenir en mode nuit) */
+html.sun-mode .btn-mode-toggle .icon-sun  { display: none; }
+html.sun-mode .btn-mode-toggle .icon-moon { display: block; }
+
+/* ══════════════════════════════════════════
+   MODE JOUR (sun-mode) — fond blanc, contraste max
+   ══════════════════════════════════════════ */
+
+html.sun-mode {
+  /* Fonds */
+  --bg-primary:    #FFFFFF;
+  --bg-surface:    #F0F4F8;
+  --bg-elevated:   #E2EAF0;
+  --bg-active:     #D0E4F8;
+
+  /* Accents — saturés et sombres pour tenir sur fond blanc */
+  --accent-cyan:   #0070A8;
+  --accent-teal:   #005A8A;
+  --accent-amber:  #B06000;
+  --accent-green:  #007840;
+  --accent-red:    #C0001A;
+
+  /* Textes */
+  --text-primary:  #080808;
+  --text-secondary:#1A3A50;
+  --text-dim:      #3A5A70;
+
+  /* Bordures */
+  --border:        #C0D4E0;
+  --border-bright: #8AB0C8;
+
+  /* Statuts */
+  --status-on:     #007840;
+  --status-off:    #3A5A70;
+
+  /* Voiles */
+  --accent-sail:     #1A7A3A;
+  --accent-sail-dim: rgba(26,122,58,0.22);
+  --accent-sail-mid: rgba(26,122,58,0.12);
+}
+
+/* Overrides spécifiques : couleurs hardcodées dans la CSS sombre */
+html.sun-mode .prop-seg.fill {
+  border-color: #8ABDA8;
+}
+html.sun-mode .prop-seg.fill .prop-seg-icon,
+html.sun-mode .prop-seg.fill .prop-seg-name {
+  color: var(--accent-sail);
+}
+
+/* Ligne de surface du segment sélectionné : adapter le gradient */
+html.sun-mode .prop-seg.selected::before {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(26,122,58,0.4) 20%,
+    rgba(26,122,58,0.9) 50%,
+    rgba(26,122,58,0.4) 80%,
+    transparent 100%);
+}
+
+/* Ombre moteur ON : plus visible sur fond clair */
+html.sun-mode .prop-motor-track.on {
+  box-shadow: 0 0 0 2px var(--accent-amber), 0 0 12px rgba(176,96,0,0.20);
+}
+
+/* Ombre bouton actif : adapter */
+html.sun-mode .btn.active {
+  box-shadow: 0 0 10px rgba(0,112,168,0.30);
+}
+
+/* Textarea + inputs : fond légèrement grisé */
+html.sun-mode textarea:focus {
+  box-shadow: 0 0 0 2px rgba(0,112,168,0.20);
+}
+
+/* Pulse animation : utiliser l'accent adapté */
+html.sun-mode .value-updated {
+  animation: pulse-update-sun 2s ease-out forwards;
+}
+@keyframes pulse-update-sun {
+  0%   { color: var(--accent-cyan); }
+  100% { color: var(--text-primary); }
 }

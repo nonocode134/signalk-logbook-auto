@@ -65,37 +65,70 @@ function updateValue (id, text) {
 }
 
 // ──── État moteur ────
+let _motorOn = false
+
 function setMotorState (state) {
-  const onBtn = document.getElementById('motor-on')
-  const offBtn = document.getElementById('motor-off')
-  if (!onBtn || !offBtn) return
-  if (state === 'on') {
-    onBtn.classList.add('active', 'motor-amber')
-    offBtn.classList.remove('active', 'motor-amber')
-  } else {
-    offBtn.classList.add('active')
-    onBtn.classList.remove('active', 'motor-amber')
-  }
+  _motorOn = state === 'on'
+  _renderMotor(_motorOn)
+}
+
+function _renderMotor (isOn) {
+  document.getElementById('motor-track')?.classList.toggle('on', isOn)
+  document.getElementById('motor-row')?.classList.toggle('on', isOn)
+  const s = document.getElementById('motor-status')
+  if (s) s.textContent = isOn ? 'ON' : 'OFF'
+}
+
+function handleMotorToggle () {
+  _motorOn = !_motorOn
+  _renderMotor(_motorOn)
+  postState('moteur', _motorOn ? 'on' : 'off').then(refreshJournal)
 }
 
 // ──── État voiles ────
-// reefs : -1=affalée, 0=full, 1-3=ris
+// level : 0=plein  1=1ris  2=2ris  3=3ris  4=affalé(e)
+const _sailLevel = { gv: 4, gen: 4 }
+const _SAIL_LABELS = {
+  gv:  ['Plein', '1 ris', '2 ris', '3 ris', 'Affalée'],
+  gen: ['Plein', '1 ris', '2 ris', '3 ris', 'Affalé']
+}
+
+function _renderSailGauge (sail, level) {
+  for (let i = 0; i <= 3; i++) {
+    const seg = document.getElementById(`${sail}-${i}`)
+    if (!seg) continue
+    seg.classList.remove('selected', 'fill')
+    if (i === level)      seg.classList.add('selected')
+    else if (i > level)   seg.classList.add('fill')
+  }
+  document.getElementById(`${sail}-aff`)?.classList.toggle('current', level === 4)
+  const st = document.getElementById(`${sail}-state`)
+  if (st) {
+    st.textContent = _SAIL_LABELS[sail][level]
+    st.classList.toggle('lit', level < 4)
+  }
+}
+
+// Appelé par WebSocket / loadInitialStatus — reefs : -1=affalée, 0=full, 1-3=ris
 function setGVButton (reefs) {
-  const map = { '-1': 'gv-furled', 0: 'gv-full', 1: 'gv-ris1', 2: 'gv-ris2', 3: 'gv-ris3' }
-  activateSailButton('gv', map[reefs] || null)
+  const level = reefs === -1 ? 4 : reefs
+  _sailLevel.gv = level
+  _renderSailGauge('gv', level)
 }
 
 function setGenoisButton (reefs) {
-  const map = { '-1': 'genois-furled', 0: 'genois-full', 1: 'genois-ris1', 2: 'genois-ris2', 3: 'genois-ris3' }
-  activateSailButton('genois', map[reefs] || null)
+  const level = reefs === -1 ? 4 : reefs
+  _sailLevel.gen = level
+  _renderSailGauge('gen', level)
 }
 
-function activateSailButton (prefix, activeId) {
-  const ids = [`${prefix}-furled`, `${prefix}-full`, `${prefix}-ris1`, `${prefix}-ris2`, `${prefix}-ris3`]
-  for (const id of ids) {
-    const btn = document.getElementById(id)
-    if (btn) btn.classList.toggle('active', id === activeId)
-  }
+// Appelé par les segments de la jauge (onclick dans le HTML)
+function handleSailGauge (sail, level) {
+  _sailLevel[sail] = level
+  _renderSailGauge(sail, level)
+  const apiSail = sail === 'gen' ? 'genois' : sail
+  const furled = level === 4
+  postState(apiSail, { reefs: furled ? 0 : level, active: !furled, furled }).then(refreshJournal)
 }
 
 // ──── État navigation ────
@@ -231,28 +264,6 @@ function _updateTripButtons (hasActiveTrip) {
   if (arr) arr.style.display = hasActiveTrip ? '' : 'none'
 }
 
-// ──── Handlers boutons ────
-function handleMotor (state) {
-  flashBtn('motor-' + state)
-  postState('moteur', state).then(refreshJournal)
-}
-
-// sailType = 'gv' | 'genois', reefs = -1 (affalée) | 0 (full) | 1-3
-function handleSail (sailType, reefs) {
-  const ids = { '-1': `${sailType}-furled`, 0: `${sailType}-full`, 1: `${sailType}-ris1`, 2: `${sailType}-ris2`, 3: `${sailType}-ris3` }
-  flashBtn(ids[reefs])
-
-  const furled = reefs === -1
-  const active = !furled
-  const value = { reefs: furled ? 0 : reefs, active, furled }
-
-  postState(sailType, value).then(() => {
-    if (sailType === 'gv') setGVButton(reefs)
-    else setGenoisButton(reefs)
-    refreshJournal()
-  })
-}
-
 function sendObservation () {
   const el = document.getElementById('observation-text')
   const text = el?.value?.trim()
@@ -287,7 +298,23 @@ async function refreshJournal () {
   } catch (e) { console.error('journal fetch error:', e) }
 }
 
+function _updateLastEntry (entries) {
+  const strip = document.getElementById('last-entry')
+  if (!strip) return
+  if (!Array.isArray(entries) || entries.length === 0) {
+    strip.classList.add('empty')
+    document.getElementById('last-entry-text').textContent = 'Aucune entrée'
+    return
+  }
+  const entry = entries[0]
+  const time = new Date(entry.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  strip.classList.remove('empty')
+  document.getElementById('last-entry-time').textContent = time
+  document.getElementById('last-entry-text').textContent = entry.summary
+}
+
 function renderJournal (entries) {
+  _updateLastEntry(entries)
   const list = document.getElementById('journal-list')
   if (!list) return
 
@@ -391,19 +418,18 @@ function flashBtn (id) {
   setTimeout(() => btn.classList.remove('flash'), 150)
 }
 
-// ──── Horloge ────
-function startClock () {
-  const update = () => {
-    document.getElementById('status-time').textContent =
-      new Date().toLocaleTimeString('fr-FR')
-  }
-  update()
-  setInterval(update, 1000)
+// ──── Mode jour / nuit ────
+function toggleSunMode () {
+  const active = document.documentElement.classList.toggle('sun-mode')
+  localStorage.setItem('sun-mode', active ? '1' : '0')
 }
 
 // ──── Init ────
 document.addEventListener('DOMContentLoaded', () => {
-  startClock()
+  if (localStorage.getItem('sun-mode') === '1') {
+    document.documentElement.classList.add('sun-mode')
+  }
+
   connectWebSocket()
   loadInitialStatus()
   refreshJournal()

@@ -8,22 +8,53 @@ Détecte les navigations via GPS, loggue toutes les 15 minutes, consolide les é
 
 ## Prérequis
 
-- Signal K Server 2.x (`npm install -g signalk-server`)
-- Node.js 18+
-- Sur Raspberry Pi 3B+ : build tools pour compiler `better-sqlite3` (`sudo apt install build-essential python3`)
+- Signal K Server 2.x installé globalement (`/usr/bin/signalk-server`)
+- Node.js 22 (via NodeSource)
+- Sur Raspberry Pi 3B+ : build tools pour compiler `better-sqlite3`
+  ```bash
+  sudo apt install build-essential python3-dev
+  ```
 
 ---
 
 ## Installation
 
-### Développement (macBook / Linux)
+### Production — Raspberry Pi (depuis GitHub)
+
+Le plugin s'installe directement depuis GitHub dans le répertoire Signal K de l'utilisateur `admin`.
+
+```bash
+# 1. Installer le plugin depuis GitHub
+#    (compile better-sqlite3 depuis les sources automatiquement sur ARM)
+cd /home/admin/.signalk
+npm install github:nonocode134/signalk-logbook-auto
+
+# 2. Redémarrer Signal K
+sudo systemctl restart signalk
+```
+
+Le plugin apparaît ensuite dans l'interface admin Signal K → Plugins.
+
+> La compilation de `better-sqlite3` prend quelques minutes sur Pi 3B+, c'est normal.
+
+#### Mise à jour
+
+```bash
+cd /home/admin/.signalk
+npm install github:nonocode134/signalk-logbook-auto
+sudo systemctl restart signalk
+```
+
+---
+
+### Développement (macBook)
 
 ```bash
 # 1. Installer les dépendances
 cd signalk-logbook-auto
 npm install
 
-# 2. Lier le plugin au serveur SK
+# 2. Lier le plugin au serveur SK local
 npm link
 cd ~/.signalk
 npm link signalk-logbook-auto
@@ -38,23 +69,6 @@ npm link signalk-fake-sensors
 signalk-server
 # ou avec données NMEA synthétiques :
 signalk-server --sample-n2k-data
-```
-
-### Production (Raspberry Pi 3B+)
-
-```bash
-# Copier le plugin sur le Pi (ex: via rsync)
-rsync -av signalk-logbook-auto/ pi@pi.local:~/signalk-logbook-auto/
-
-# Sur le Pi : compiler better-sqlite3 pour ARMv7
-cd ~/signalk-logbook-auto
-npm install --build-from-source
-
-npm link
-cd ~/.signalk
-npm link signalk-logbook-auto
-
-sudo systemctl restart signalk
 ```
 
 > **Important** : ne pas installer `signalk-fake-sensors` sur le Pi en production.
