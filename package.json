@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "description": "Plugin Signal K de livre de bord automatique pour voilier",
   "keywords": [
-    "signalk-node-server-plugin"
+    "signalk-node-server-plugin",
+    "signalk-webapp"
   ],
+  "signalk": {
+    "appIcon": "./public/icon.svg",
+    "displayName": "Logbook"
+  },
   "main": "plugin/index.js",
   "scripts": {
     "test": "echo \"No tests configured\" && exit 0"

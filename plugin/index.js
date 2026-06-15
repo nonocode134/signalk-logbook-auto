@@ -52,7 +52,9 @@ module.exports = (app) => {
   // Le chemin /plugins/<id>/ est réservé par SK pour ses métadonnées JSON.
   // On monte le handler statique une seule fois au chargement du module,
   // sur un chemin libre, avant que start()/stop() soient jamais appelés.
-  app.use('/logbook', createStaticHandler(path.join(__dirname, '../public')))
+  app.use('/signalk-logbook-auto', createStaticHandler(path.join(__dirname, '../public')))
+  // Redirect legacy URL
+  app.get('/logbook*', (req, res) => res.redirect(301, req.url.replace('/logbook', '/signalk-logbook-auto')))
 
   // Variables réinitialisées à chaque appel de start()
   let logger = null

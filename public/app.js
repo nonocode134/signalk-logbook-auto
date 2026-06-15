@@ -1,14 +1,14 @@
 'use strict'
 
 const API_BASE = '/plugins/signalk-logbook-auto'
-const SK_PORT = 3000
 
 // ──── WebSocket Signal K ────
 let ws = null
 let wsReconnectTimer = null
 
 function connectWebSocket () {
-  const url = `ws://${window.location.hostname}:${SK_PORT}/signalk/v1/stream`
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  const url = `${proto}//${window.location.host}/signalk/v1/stream`
   ws = new WebSocket(url)
 
   ws.onmessage = (e) => {
