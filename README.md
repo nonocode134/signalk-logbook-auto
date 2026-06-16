@@ -27,7 +27,7 @@ Le plugin s'installe directement depuis GitHub dans le répertoire Signal K de l
 # 1. Installer le plugin depuis GitHub
 #    (compile better-sqlite3 depuis les sources automatiquement sur ARM)
 cd /home/admin/.signalk
-npm install github:nonocode134/signalk-logbook-auto
+npm install nonocode134/signalk-logbook-auto --build-from-source
 
 # 2. Redémarrer Signal K
 sudo systemctl restart signalk
@@ -41,7 +41,7 @@ Le plugin apparaît ensuite dans l'interface admin Signal K → Plugins.
 
 ```bash
 cd /home/admin/.signalk
-npm install github:nonocode134/signalk-logbook-auto
+npm install nonocode134/signalk-logbook-auto --build-from-source
 sudo systemctl restart signalk
 ```
 
@@ -77,19 +77,21 @@ signalk-server --sample-n2k-data
 
 ## Interface web
 
-Une fois le plugin démarré, ouvrir :
+Le plugin est enregistré comme webapp Signal K et apparaît dans l'**App Dock** de l'interface SK.
+
+URL directe :
 
 ```
-http://pi.local:3000/logbook/
+http://pi.local:3000/signalk-logbook-auto/
 ```
 
 ou en développement :
 
 ```
-http://localhost:3000/logbook/
+http://localhost:3000/signalk-logbook-auto/
 ```
 
-> **Note** : le chemin `/plugins/signalk-logbook-auto/` est réservé par SK pour ses métadonnées JSON et ne sert pas l'interface web.
+> L'ancienne URL `/logbook/` redirige automatiquement vers la nouvelle (301).
 
 ---
 
