@@ -45,7 +45,9 @@ class Consolidator {
   }
 
   // Upsert d'une fenêtre : UPDATE si entrée existante, INSERT sinon.
+  // Les entrées no_aggregate (MOB) ne sont jamais écrasées.
   _upsert (tripId, events, existing) {
+    if (existing && existing.no_aggregate) return
     const summary = this._buildSummary(events)
     const eventIds = events.map(e => e.id)
     const conditions = this._bestConditions(events)

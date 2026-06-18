@@ -15,8 +15,9 @@ class Logger {
     const schema = fs.readFileSync(path.join(__dirname, '../db/schema.sql'), 'utf8')
     this.db.exec(schema)
 
-    // Migration : ajout colonne conditions si absente (base existante)
+    // Migrations colonnes absentes (bases existantes)
     try { this.db.exec('ALTER TABLE logbook_entries ADD COLUMN conditions TEXT') } catch (_) {}
+    try { this.db.exec('ALTER TABLE logbook_entries ADD COLUMN no_aggregate INTEGER DEFAULT 0') } catch (_) {}
 
     this._prepare()
   }
@@ -43,8 +44,8 @@ class Logger {
         SELECT * FROM trips WHERE status = 'active' ORDER BY id DESC LIMIT 1
       `),
       insertLogbookEntry: db.prepare(`
-        INSERT INTO logbook_entries (trip_id, timestamp, summary, event_ids, lat, lon, conditions)
-        VALUES (@trip_id, @timestamp, @summary, @event_ids, @lat, @lon, @conditions)
+        INSERT INTO logbook_entries (trip_id, timestamp, summary, event_ids, lat, lon, conditions, no_aggregate)
+        VALUES (@trip_id, @timestamp, @summary, @event_ids, @lat, @lon, @conditions, @no_aggregate)
       `),
       getLogbookEntries: db.prepare(`
         SELECT * FROM logbook_entries WHERE trip_id=@trip_id
@@ -135,8 +136,8 @@ class Logger {
     })
   }
 
-  // Insère une entrée consolidée de livre de bord
-  insertLogbookEntry ({ trip_id, timestamp, summary, event_ids, lat, lon, conditions }) {
+  // Insère une entrée de livre de bord (consolidée ou no_aggregate)
+  insertLogbookEntry ({ trip_id, timestamp, summary, event_ids, lat, lon, conditions, no_aggregate = 0 }) {
     const result = this.stmts.insertLogbookEntry.run({
       trip_id,
       timestamp,
@@ -144,7 +145,8 @@ class Logger {
       event_ids: JSON.stringify(event_ids),
       lat: lat ?? null,
       lon: lon ?? null,
-      conditions: conditions != null ? JSON.stringify(conditions) : null
+      conditions: conditions != null ? JSON.stringify(conditions) : null,
+      no_aggregate: no_aggregate ? 1 : 0
     })
     return result.lastInsertRowid
   }

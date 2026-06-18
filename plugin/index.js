@@ -68,12 +68,16 @@ module.exports = (app) => {
   let consolidationTimer = null
   let currentSnapshot = {}   // dernières valeurs capteurs reçues (point instantané)
 
-  // Buffers glissants pour moyennes 2 min (SOG 1 Hz = 120 samples, vent 5 s = 24 samples)
-  const SOG_BUF  = 120
-  const WIND_BUF = 24
+  // Buffers glissants pour moyennes 30 s (SOG/COG 1 Hz = 30 samples, vent 5 s = 6 samples)
+  const SOG_BUF  = 30
+  const COG_BUF  = 30
+  const WIND_BUF = 6
   let sogBuffer       = []
+  let cogBuffer       = []
   let windSpeedBuffer = []
   let windAngleBuffer = []
+
+  let mobState = null   // { startedAt: ISO, tripId: number|null } quand alerte active
 
   const plugin = {
     id: 'signalk-logbook-auto',
@@ -187,7 +191,8 @@ module.exports = (app) => {
       consolidator = null
       exporter = null
       currentSnapshot = {}
-      sogBuffer = []; windSpeedBuffer = []; windAngleBuffer = []
+      sogBuffer = []; cogBuffer = []; windSpeedBuffer = []; windAngleBuffer = []
+      mobState = null
     },
 
     registerWithRouter: (router) => {
@@ -213,7 +218,8 @@ module.exports = (app) => {
               lat: row.lat,
               lon: row.lon,
               conditions: row.conditions ? JSON.parse(row.conditions) : null,
-              distance_from_start_nm: dist != null ? +dist.toFixed(1) : null
+              distance_from_start_nm: dist != null ? +dist.toFixed(1) : null,
+              no_aggregate: row.no_aggregate || 0
             }
           })
           res.json(enriched)
@@ -227,7 +233,8 @@ module.exports = (app) => {
           res.json({
             currentTrip: logger.getActiveTrip(),
             ...stateManager.getStatus(),
-            latestSensors: currentSnapshot
+            latestSensors: currentSnapshot,
+            mob: mobState ? { active: true, startedAt: mobState.startedAt } : { active: false, startedAt: null }
           })
         } catch (e) { res.status(500).json({ error: e.message }) }
       })
@@ -326,6 +333,91 @@ module.exports = (app) => {
           res.json(result)
         } catch (e) { res.status(500).json({ error: e.message }) }
       })
+
+      // GET /api/mob/status
+      router.get('/api/mob/status', (req, res) => {
+        res.json({ active: !!mobState, startedAt: mobState?.startedAt || null })
+      })
+
+      // POST /api/mob/start — déclenche l'alerte MOB
+      router.post('/api/mob/start', (req, res) => {
+        if (!logger) return res.status(503).json({ error: 'Plugin non démarré' })
+        if (mobState) return res.status(400).json({ error: 'Alerte MOB déjà active' })
+        try {
+          const snap = _getMobSnapshot()
+
+          // Garantit un trip actif — en crée un si nécessaire pour que l'entrée soit toujours enregistrée
+          let activeTrip = logger.getActiveTrip()
+          if (!activeTrip) {
+            _startTrip(snap)
+            activeTrip = logger.getActiveTrip()
+          }
+
+          const eventId = logger.insertEvent({ ...snap, type: 'mob_start', trip_id: activeTrip.id })
+
+          logger.insertLogbookEntry({
+            trip_id: activeTrip.id,
+            timestamp: snap.timestamp,
+            summary: _buildMobStartSummary(snap),
+            event_ids: [eventId],
+            lat: snap.lat,
+            lon: snap.lon,
+            conditions: _buildConditions(snap),
+            no_aggregate: 1
+          })
+
+          app.handleMessage(plugin.id, {
+            context: 'vessels.self',
+            updates: [{ source: { label: plugin.id }, values: [{
+              path: 'notifications.mob',
+              value: { state: 'emergency', method: ['visual', 'sound'], message: 'MOB — Homme à la mer', timestamp: snap.timestamp }
+            }] }]
+          })
+
+          mobState = { startedAt: snap.timestamp, tripId: activeTrip.id }
+          app.setPluginStatus('⚠ ALERTE MOB')
+          res.json({ ok: true, startedAt: snap.timestamp })
+        } catch (e) { res.status(500).json({ error: e.message }) }
+      })
+
+      // POST /api/mob/end — lève l'alerte MOB
+      router.post('/api/mob/end', (req, res) => {
+        if (!logger) return res.status(503).json({ error: 'Plugin non démarré' })
+        if (!mobState) return res.status(400).json({ error: 'Aucune alerte MOB active' })
+        try {
+          const snap = _getMobSnapshot()
+          const activeTrip = logger.getActiveTrip()
+          const savedMobState = mobState
+
+          const eventId = logger.insertEvent({ ...snap, type: 'mob_end', trip_id: activeTrip?.id || null })
+
+          if (activeTrip) {
+            logger.insertLogbookEntry({
+              trip_id: activeTrip.id,
+              timestamp: snap.timestamp,
+              summary: _buildMobEndSummary(snap, savedMobState.startedAt),
+              event_ids: [eventId],
+              lat: snap.lat,
+              lon: snap.lon,
+              conditions: _buildConditions(snap),
+              no_aggregate: 1
+            })
+          }
+
+          app.handleMessage(plugin.id, {
+            context: 'vessels.self',
+            updates: [{ source: { label: plugin.id }, values: [{
+              path: 'notifications.mob',
+              value: { state: 'normal', message: 'Alerte MOB levée', timestamp: snap.timestamp }
+            }] }]
+          })
+
+          mobState = null
+          const activeT = logger.getActiveTrip()
+          app.setPluginStatus(activeT ? `En navigation · Trip #${activeT.id}` : 'En attente de navigation')
+          res.json({ ok: true })
+        } catch (e) { res.status(500).json({ error: e.message }) }
+      })
     }
   }
 
@@ -353,6 +445,7 @@ module.exports = (app) => {
         break
       case 'navigation.courseOverGroundTrue':
         currentSnapshot.cog_rad = value
+        if (value != null) { cogBuffer.push(value); if (cogBuffer.length > COG_BUF) cogBuffer.shift() }
         break
       case 'environment.wind.speedApparent':
         currentSnapshot.wind_speed = value
@@ -377,6 +470,11 @@ module.exports = (app) => {
     const snap = { ...currentSnapshot }
     if (sogBuffer.length > 0) {
       snap.sog_ms = sogBuffer.reduce((s, v) => s + v, 0) / sogBuffer.length
+    }
+    if (cogBuffer.length > 0) {
+      const sinSum = cogBuffer.reduce((s, a) => s + Math.sin(a), 0)
+      const cosSum = cogBuffer.reduce((s, a) => s + Math.cos(a), 0)
+      snap.cog_rad = Math.atan2(sinSum, cosSum)
     }
     if (windSpeedBuffer.length > 0) {
       snap.wind_speed = windSpeedBuffer.reduce((s, v) => s + v, 0) / windSpeedBuffer.length
@@ -492,6 +590,37 @@ module.exports = (app) => {
       pressure_hpa: snap.pressure_pa != null ? +(snap.pressure_pa / 100).toFixed(0) : null,
       temp_c: snap.temp_k != null ? +(snap.temp_k - 273.15).toFixed(1) : null
     }
+  }
+
+  // Snapshot MOB : position GPS instantanée + SOG/COG/vent moyennés 30 s
+  function _getMobSnapshot () {
+    const avg = _getAveragedSnapshot()
+    return { ...avg, lat: currentSnapshot.lat, lon: currentSnapshot.lon, timestamp: new Date().toISOString() }
+  }
+
+  function _buildMobStartSummary (snap) {
+    const time = new Date(snap.timestamp).toLocaleTimeString('fr-FR', {
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    })
+    const parts = ['MOB']
+    const c = _buildConditions(snap)
+    if (c) {
+      if (c.sog_kts != null) parts.push(`SOG ${c.sog_kts} kt`)
+      if (c.cog_deg != null) parts.push(`COG ${c.cog_deg}°`)
+      if (c.wind_speed_kts != null) parts.push(`Vent ${c.wind_speed_kts} kt`)
+    }
+    return `${time} — ${parts.join(' · ')}`
+  }
+
+  function _buildMobEndSummary (snap, startedAt) {
+    const time = new Date(snap.timestamp).toLocaleTimeString('fr-FR', {
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    })
+    const sec = Math.round((new Date(snap.timestamp) - new Date(startedAt)) / 1000)
+    const h = String(Math.floor(sec / 3600)).padStart(2, '0')
+    const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0')
+    const s = String(sec % 60).padStart(2, '0')
+    return `${time} — Fin MOB · Durée ${h}:${m}:${s}`
   }
 
   // Formule de Haversine — retourne la distance en milles nautiques

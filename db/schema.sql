@@ -32,14 +32,15 @@ CREATE TABLE IF NOT EXISTS events (
 );
 
 CREATE TABLE IF NOT EXISTS logbook_entries (
-  id          INTEGER PRIMARY KEY AUTOINCREMENT,
-  trip_id     INTEGER NOT NULL REFERENCES trips(id),
-  timestamp   TEXT NOT NULL,          -- timestamp représentatif du groupe (premier événement)
-  summary     TEXT NOT NULL,          -- texte lisible généré par le consolidateur
-  event_ids   TEXT NOT NULL,          -- JSON array des event.id consolidés
-  lat         REAL,
-  lon         REAL,
-  conditions  TEXT                    -- JSON : {sog_kts, cog_deg, wind_speed_kts, wind_angle_deg, pressure_hpa, temp_c}
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  trip_id      INTEGER NOT NULL REFERENCES trips(id),
+  timestamp    TEXT NOT NULL,          -- timestamp représentatif du groupe (premier événement)
+  summary      TEXT NOT NULL,          -- texte lisible généré par le consolidateur
+  event_ids    TEXT NOT NULL,          -- JSON array des event.id consolidés
+  lat          REAL,
+  lon          REAL,
+  conditions   TEXT,                   -- JSON : {sog_kts, cog_deg, wind_speed_kts, wind_angle_deg, pressure_hpa, temp_c}
+  no_aggregate INTEGER DEFAULT 0      -- 1 = entrée MOB, jamais écrasée par le consolidateur
 );
 
 -- Index de performance (important sur Pi 3B+ avec CPU lent)

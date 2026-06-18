@@ -71,10 +71,32 @@ body {
   background: var(--bg-surface);
   border-bottom: 2px solid var(--border);
   padding: 8px 12px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 8px;
+  min-height: 50px;
+}
+
+.top-left {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 50px;
+  gap: 8px;
+  min-width: 0;
+}
+
+.top-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.top-mob-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
 }
 
 /* Badge navstate plus compact dans le top strip */
@@ -732,8 +754,8 @@ textarea::placeholder { color: var(--text-dim); }
 
 :root {
   --accent-sail:     #2ECC71;
-  --accent-sail-dim: rgba(46,204,113,0.20);
-  --accent-sail-mid: rgba(30,160,70,0.12);
+  --accent-sail-dim: rgba(46,204,113,0.38);  /* segment sélectionné */
+  --accent-sail-mid: rgba(30,160,70,0.22);   /* segments fill sous le sélectionné */
 }
 
 /* ── Moteur toggle ── */
@@ -877,10 +899,10 @@ textarea::placeholder { color: var(--text-dim); }
 /* Remplissage sous le segment sélectionné */
 .prop-seg.fill {
   background: var(--accent-sail-mid);
-  border-color: #1C4030;
+  border-color: #2A6040;
 }
-.prop-seg.fill .prop-seg-icon { color: #42A865; }
-.prop-seg.fill .prop-seg-name { color: #42A865; }
+.prop-seg.fill .prop-seg-icon { color: #52C87A; }
+.prop-seg.fill .prop-seg-name { color: #52C87A; }
 
 /* Segment sélectionné (sommet du remplissage) */
 .prop-seg.selected {
@@ -1338,8 +1360,8 @@ html.sun-mode {
 
   /* Voiles */
   --accent-sail:     #1A7A3A;
-  --accent-sail-dim: rgba(26,122,58,0.22);
-  --accent-sail-mid: rgba(26,122,58,0.12);
+  --accent-sail-dim: rgba(26,122,58,0.40);
+  --accent-sail-mid: rgba(26,122,58,0.22);
 }
 
 /* Overrides spécifiques : couleurs hardcodées dans la CSS sombre */
@@ -1383,4 +1405,195 @@ html.sun-mode .value-updated {
 @keyframes pulse-update-sun {
   0%   { color: var(--accent-cyan); }
   100% { color: var(--text-primary); }
+}
+
+/* ══════════════════════════════════════════
+   MOB — Bouton + timer + modal
+   ══════════════════════════════════════════ */
+
+.btn-mob {
+  background: var(--bg-elevated);
+  border: 3px solid var(--accent-red);
+  color: var(--accent-red);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  min-height: 46px;
+  min-width: 88px;
+  padding: 6px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  overflow: hidden;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+
+/* Barre de progression long-press */
+.btn-mob::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 61, 76, 0.28);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: none;
+}
+.btn-mob.pressing::before {
+  transform: scaleX(1);
+  transition: transform 3s linear;
+}
+
+/* Alerte active */
+.btn-mob.active {
+  background: var(--accent-red);
+  color: #fff;
+  border-color: var(--accent-red);
+  animation: mob-glow 1.8s ease-in-out infinite;
+}
+
+/* Long-press fill blanc sur fond rouge */
+.btn-mob.active::before {
+  background: rgba(255, 255, 255, 0.30);
+}
+
+@keyframes mob-glow {
+  0%, 100% { box-shadow: 0 0 18px rgba(255, 61, 76, 0.55); }
+  50%       { box-shadow: 0 0 38px rgba(255, 61, 76, 0.95); }
+}
+
+/* Timer affiché sous le bouton pendant l'alerte */
+.mob-timer {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-red);
+  letter-spacing: 0.10em;
+  animation: mob-timer-blink 1s step-end infinite;
+}
+
+@keyframes mob-timer-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+
+/* ── Modal DÉCLENCHEMENT MOB ── */
+.mob-start-confirm-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 16px 0 8px;
+}
+
+.btn-mob-start-confirm {
+  background: var(--accent-red);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 26px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 22px 44px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  box-shadow: 0 0 32px rgba(255, 61, 76, 0.75);
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.btn-mob-start-confirm:active {
+  transform: scale(0.96);
+  box-shadow: 0 0 14px rgba(255, 61, 76, 0.5);
+}
+
+html.sun-mode .btn-mob-start-confirm {
+  box-shadow: 0 0 24px rgba(192, 0, 26, 0.60);
+}
+
+/* ── Modal FIN MOB ── */
+.modal-card--mob {
+  border-color: var(--accent-red);
+}
+
+.modal-title--mob {
+  color: var(--accent-red);
+}
+
+.mob-modal-body {
+  font-family: 'Barlow', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.mob-modal-sub {
+  font-family: 'Barlow', sans-serif;
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  margin-top: -6px;
+}
+
+.mob-modal-elapsed {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent-red);
+  text-align: center;
+  padding: 6px 0 2px;
+}
+
+/* Bouton confirm long-press (3 s) dans le modal MOB */
+.btn-mob-end-confirm {
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-mob-end-confirm::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 61, 76, 0.22);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: none;
+}
+
+.btn-mob-end-confirm.pressing::before {
+  transform: scaleX(1);
+  transition: transform 3s linear;
+}
+
+/* ── Journal : entrées MOB en rouge ── */
+.journal-entry--mob .journal-summary { color: var(--accent-red); }
+.journal-entry--mob::before { background: var(--accent-red); opacity: 0.7; }
+
+/* ── Sun mode overrides MOB ── */
+html.sun-mode .btn-mob {
+  border-color: var(--accent-red);
+  color: var(--accent-red);
+}
+html.sun-mode .btn-mob.active {
+  background: var(--accent-red);
+  color: #fff;
+  animation: mob-glow-sun 1.8s ease-in-out infinite;
+}
+@keyframes mob-glow-sun {
+  0%, 100% { box-shadow: 0 0 12px rgba(192, 0, 26, 0.50); }
+  50%       { box-shadow: 0 0 28px rgba(192, 0, 26, 0.85); }
+}
+html.sun-mode .mob-timer { color: var(--accent-red); }
+html.sun-mode .mob-modal-elapsed { color: var(--accent-red); }
+
+/* ── Responsive top-strip sur écran étroit ── */
+@media (max-width: 400px) {
+  .btn-mob { font-size: 17px; min-width: 72px; padding: 5px 12px; min-height: 40px; }
+  .mob-timer { font-size: 10px; }
 }

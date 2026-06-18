@@ -80,6 +80,7 @@ function _renderMotor (isOn) {
 }
 
 function handleMotorToggle () {
+  vibrate(20)
   _motorOn = !_motorOn
   _renderMotor(_motorOn)
   postState('moteur', _motorOn ? 'on' : 'off').then(refreshJournal)
@@ -99,7 +100,8 @@ function _renderSailGauge (sail, level) {
     if (!seg) continue
     seg.classList.remove('selected', 'fill')
     if (i === level)      seg.classList.add('selected')
-    else if (i > level)   seg.classList.add('fill')
+    else if (i > level)   seg.classList.add('fill')  // segments sous le sélectionné = vert dim
+    // i < level : au-dessus du ris actuel = fond sombre (voile affalée dans cette zone)
   }
   document.getElementById(`${sail}-aff`)?.classList.toggle('current', level === 4)
   const st = document.getElementById(`${sail}-state`)
@@ -124,6 +126,7 @@ function setGenoisButton (reefs) {
 
 // Appelé par les segments de la jauge (onclick dans le HTML)
 function handleSailGauge (sail, level) {
+  vibrate(15)
   _sailLevel[sail] = level
   _renderSailGauge(sail, level)
   const apiSail = sail === 'gen' ? 'genois' : sail
@@ -141,6 +144,7 @@ function setNavStateDisplay (state) {
 
 // ──── Départ / Arrivée ────
 async function handleDeparture () {
+  vibrate(20)
   flashBtn('btn-departure')
   try {
     const res = await fetch(`${API_BASE}/api/trip/start`, {
@@ -160,6 +164,7 @@ function startArrivalPress () {
   btn.classList.add('pressing')
   _pressTimer = setTimeout(() => {
     btn.classList.remove('pressing')
+    vibrate(30)
     openArrivalModal()
   }, 1500)
 }
@@ -268,6 +273,7 @@ function sendObservation () {
   const el = document.getElementById('observation-text')
   const text = el?.value?.trim()
   if (!text) return
+  vibrate(15)
 
   fetch(`${API_BASE}/api/observation`, {
     method: 'POST',
@@ -328,7 +334,8 @@ function renderJournal (entries) {
       hour: '2-digit', minute: '2-digit', second: '2-digit'
     })
     const details = _buildJournalDetails(entry)
-    return `<li class="journal-entry">
+    const mobClass = entry.no_aggregate ? ' journal-entry--mob' : ''
+    return `<li class="journal-entry${mobClass}">
       <span class="journal-time">${time}</span>
       <span class="journal-body">
         <span class="journal-summary">${escapeHtml(entry.summary)}</span>
@@ -372,6 +379,15 @@ async function loadInitialStatus () {
     const res = await fetch(`${API_BASE}/api/status`)
     const status = await res.json()
 
+    // Restaure l'état MOB si une alerte est active (ex. après rechargement de page)
+    if (status.mob?.active && !_mobActive) initMob(status)
+    else if (!status.mob?.active && _mobActive) {
+      _mobActive = false
+      _mobStartedAt = null
+      if (_mobTimerInterval) { clearInterval(_mobTimerInterval); _mobTimerInterval = null }
+      _renderMobInactive()
+    }
+
     setMotorState(status.motorState === 'started' ? 'on' : 'off')
     setNavStateDisplay(status.navState)
 
@@ -406,6 +422,9 @@ async function loadInitialStatus () {
   } catch (e) { console.warn('Impossible de charger le statut initial:', e) }
 }
 
+// ──── Retour haptique ────
+const vibrate = (ms = 15) => navigator.vibrate?.(ms)
+
 // ──── Utilitaires ────
 const msToKts = ms => ms * 1.94384
 const radToDeg = rad => rad * 180 / Math.PI
@@ -418,6 +437,164 @@ function flashBtn (id) {
   setTimeout(() => btn.classList.remove('flash'), 150)
 }
 
+// ──── MOB ────
+let _mobActive = false
+let _mobStartedAt = null
+let _mobTimerInterval = null
+let _mobPressTimer = null
+let _mobConfirmPressTimer = null
+
+function initMob (statusData) {
+  if (statusData?.mob?.active) {
+    _mobActive = true
+    _mobStartedAt = new Date(statusData.mob.startedAt)
+    _renderMobActive()
+    _startMobTimer()
+  }
+}
+
+// Tap simple → ouvre le modal de confirmation (seulement quand MOB inactif)
+function handleMobClick () {
+  if (_mobActive) return
+  openMobStartModal()
+}
+
+// Long-press 3 s → ouvre le modal FIN MOB (seulement quand MOB actif)
+function startMobPress () {
+  if (!_mobActive) return
+  const btn = document.getElementById('btn-mob')
+  if (!btn) return
+  btn.classList.add('pressing')
+  _mobPressTimer = setTimeout(() => {
+    btn.classList.remove('pressing')
+    vibrate(30)
+    openMobEndModal()
+  }, 3000)
+}
+
+function cancelMobPress () {
+  if (!_mobActive) return
+  clearTimeout(_mobPressTimer)
+  document.getElementById('btn-mob')?.classList.remove('pressing')
+}
+
+function openMobStartModal () {
+  vibrate(40)
+  document.getElementById('mob-start-modal').style.display = 'flex'
+}
+
+function closeMobStartModal () {
+  document.getElementById('mob-start-modal').style.display = 'none'
+}
+
+async function confirmMobStart () {
+  vibrate([60, 40, 60])  // double impulsion pour l'alerte MOB
+  closeMobStartModal()
+  await _triggerMob()
+}
+
+async function _triggerMob () {
+  try {
+    const res = await fetch(`${API_BASE}/api/mob/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ timestamp: new Date().toISOString() })
+    })
+    if (res.ok) {
+      const data = await res.json()
+      _mobActive = true
+      _mobStartedAt = new Date(data.startedAt)
+      _renderMobActive()
+      _startMobTimer()
+      refreshJournal()
+    }
+  } catch (e) { console.error('MOB start error:', e) }
+}
+
+function _renderMobActive () {
+  const btn = document.getElementById('btn-mob')
+  if (!btn) return
+  btn.textContent = 'FIN MOB'
+  btn.classList.add('active')
+  document.getElementById('mob-timer').style.display = ''
+}
+
+function _renderMobInactive () {
+  const btn = document.getElementById('btn-mob')
+  if (!btn) return
+  btn.textContent = 'MOB'
+  btn.classList.remove('active')
+  const timer = document.getElementById('mob-timer')
+  timer.style.display = 'none'
+  timer.textContent = '00:00:00'
+}
+
+function _startMobTimer () {
+  if (_mobTimerInterval) clearInterval(_mobTimerInterval)
+  _updateMobTimerDisplay()
+  _mobTimerInterval = setInterval(_updateMobTimerDisplay, 1000)
+}
+
+function _updateMobTimerDisplay () {
+  if (!_mobStartedAt) return
+  const sec = Math.floor((Date.now() - _mobStartedAt.getTime()) / 1000)
+  const h = String(Math.floor(sec / 3600)).padStart(2, '0')
+  const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0')
+  const s = String(sec % 60).padStart(2, '0')
+  document.getElementById('mob-timer').textContent = `${h}:${m}:${s}`
+}
+
+function openMobEndModal () {
+  if (_mobStartedAt) {
+    const sec = Math.floor((Date.now() - _mobStartedAt.getTime()) / 1000)
+    const h = String(Math.floor(sec / 3600)).padStart(2, '0')
+    const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0')
+    const s = String(sec % 60).padStart(2, '0')
+    const el = document.getElementById('mob-modal-elapsed')
+    if (el) el.textContent = `Alerte active depuis ${h}:${m}:${s}`
+  }
+  document.getElementById('mob-end-modal').style.display = 'flex'
+}
+
+function closeMobEndModal () {
+  document.getElementById('mob-end-modal').style.display = 'none'
+  cancelMobConfirmPress()
+}
+
+function startMobConfirmPress () {
+  const btn = document.getElementById('btn-mob-confirm')
+  if (!btn) return
+  btn.classList.add('pressing')
+  _mobConfirmPressTimer = setTimeout(async () => {
+    btn.classList.remove('pressing')
+    vibrate([60, 40, 60])
+    closeMobEndModal()
+    await _endMob()
+  }, 3000)
+}
+
+function cancelMobConfirmPress () {
+  clearTimeout(_mobConfirmPressTimer)
+  document.getElementById('btn-mob-confirm')?.classList.remove('pressing')
+}
+
+async function _endMob () {
+  try {
+    const res = await fetch(`${API_BASE}/api/mob/end`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ timestamp: new Date().toISOString() })
+    })
+    if (res.ok) {
+      _mobActive = false
+      _mobStartedAt = null
+      if (_mobTimerInterval) { clearInterval(_mobTimerInterval); _mobTimerInterval = null }
+      _renderMobInactive()
+      refreshJournal()
+    }
+  } catch (e) { console.error('MOB end error:', e) }
+}
+
 // ──── Mode jour / nuit ────
 function toggleSunMode () {
   const active = document.documentElement.classList.toggle('sun-mode')
@@ -426,6 +603,11 @@ function toggleSunMode () {
 
 // ──── Init ────
 document.addEventListener('DOMContentLoaded', () => {
+  // Retour haptique léger sur tous les boutons interactifs (Android Chrome)
+  document.addEventListener('pointerdown', e => {
+    if (e.target.closest('.btn, .prop-affaler, .modal-opt-btn'))
+      navigator.vibrate?.(12)
+  }, { passive: true })
   if (localStorage.getItem('sun-mode') === '1') {
     document.documentElement.classList.add('sun-mode')
   }
@@ -433,6 +615,25 @@ document.addEventListener('DOMContentLoaded', () => {
   connectWebSocket()
   loadInitialStatus()
   refreshJournal()
+
+  // MOB : tap → modal confirmation (inactif) | long-press 3 s → FIN MOB (actif)
+  const mobBtn = document.getElementById('btn-mob')
+  if (mobBtn) {
+    mobBtn.addEventListener('click', handleMobClick)
+    mobBtn.addEventListener('pointerdown', startMobPress)
+    mobBtn.addEventListener('pointerup', cancelMobPress)
+    mobBtn.addEventListener('pointercancel', cancelMobPress)
+    mobBtn.addEventListener('contextmenu', e => e.preventDefault())
+  }
+
+  // Long-press confirmation FIN MOB dans le modal
+  const mobConfirmBtn = document.getElementById('btn-mob-confirm')
+  if (mobConfirmBtn) {
+    mobConfirmBtn.addEventListener('pointerdown', startMobConfirmPress)
+    mobConfirmBtn.addEventListener('pointerup', cancelMobConfirmPress)
+    mobConfirmBtn.addEventListener('pointercancel', cancelMobConfirmPress)
+    mobConfirmBtn.addEventListener('contextmenu', e => e.preventDefault())
+  }
 
   // Long-press sur le bouton ARRIVÉE
   const arrBtn = document.getElementById('btn-arrival')
