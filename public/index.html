@@ -82,27 +82,17 @@
   <span class="last-entry-text" id="last-entry-text">Aucune entrée</span>
 </div>
 
-<!-- ══════════ PROPULSION : MOTEUR + VOILES ══════════ -->
+<!-- ══════════ PROPULSION : VOILES + MOTEUR ══════════ -->
 <div class="section">
-
-  <!-- Moteur toggle -->
-  <div class="prop-motor-row" id="motor-row">
-    <span class="label" style="min-width:58px">Moteur</span>
-    <div class="prop-motor-track" id="motor-track" onclick="handleMotorToggle()">
-      <span class="prop-lbl prop-lbl-off">OFF</span>
-      <span class="prop-lbl prop-lbl-on">ON</span>
-      <div class="prop-knob" id="motor-knob"></div>
-    </div>
-    <span class="prop-motor-status" id="motor-status">OFF</span>
-  </div>
 
   <!-- Jauges voiles -->
   <div class="prop-gauges">
 
     <!-- Grande Voile — mât à droite, bôme en bas -->
     <div class="prop-col">
-      <div class="prop-col-label">GV</div>
       <div class="prop-track">
+        <div class="prop-box-title">Grande Voile</div>
+        <div class="prop-state" id="gv-state">Affalée</div>
 
         <div class="prop-seg" id="gv-0" onclick="handleSailGauge('gv',0)">
           <svg class="prop-seg-icon" width="22" height="28" viewBox="0 0 22 28" fill="none">
@@ -110,7 +100,7 @@
             <line x1="2" y1="26" x2="20" y2="26" stroke="currentColor" stroke-width="1.5" opacity="0.25"/>
             <polygon points="20,2 20,26 2,26" fill="currentColor" opacity="0.6"/>
           </svg>
-          <span class="prop-seg-name">Plein</span>
+          <span class="prop-seg-name">Pleine</span>
         </div>
 
         <div class="prop-seg" id="gv-1" onclick="handleSailGauge('gv',1)">
@@ -140,15 +130,18 @@
           <span class="prop-seg-name">3 ris</span>
         </div>
 
+        <button class="prop-affaler" id="gv-aff" onclick="handleSailGauge('gv',4)">
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1.5 3.5l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Affalée
+        </button>
       </div>
-      <button class="prop-affaler" id="gv-aff" onclick="handleSailGauge('gv',4)">Affalée</button>
-      <div class="prop-state" id="gv-state">Affalée</div>
     </div>
 
     <!-- Génois — étai à gauche, pont en bas -->
     <div class="prop-col">
-      <div class="prop-col-label">Génois</div>
       <div class="prop-track">
+        <div class="prop-box-title">Génois</div>
+        <div class="prop-state" id="gen-state">Affalé</div>
 
         <div class="prop-seg" id="gen-0" onclick="handleSailGauge('gen',0)">
           <svg class="prop-seg-icon" width="22" height="28" viewBox="0 0 22 28" fill="none">
@@ -186,25 +179,40 @@
           <span class="prop-seg-name">3 ris</span>
         </div>
 
+        <button class="prop-affaler" id="gen-aff" onclick="handleSailGauge('gen',4)">
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1.5 3.5l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Affalé
+        </button>
       </div>
-      <button class="prop-affaler" id="gen-aff" onclick="handleSailGauge('gen',4)">Affalé</button>
-      <div class="prop-state" id="gen-state">Affalé</div>
     </div>
 
   </div>
+
+  <!-- Moteur — bande horizontale sous les voiles -->
+  <div class="prop-motor-h" id="motor-h">
+    <span class="prop-motor-h-title">Moteur</span>
+    <div class="prop-motor-track" id="motor-track" onclick="handleMotorToggle()">
+      <span class="prop-lbl prop-lbl-off">OFF</span>
+      <span class="prop-lbl prop-lbl-on">ON</span>
+      <div class="prop-knob" id="motor-knob"></div>
+    </div>
+  </div>
+
 </div>
 
 <!-- ══════════ OBSERVATION ══════════ -->
 <div class="section">
   <span class="label">Observation</span>
   <div class="observation-form">
-    <textarea id="observation-text" placeholder="Grain en vue au NW, empannage préventif…" rows="2"></textarea>
+    <input type="text" id="observation-text" class="obs-input"
+           placeholder="Grain en vue au NW, empannage préventif…"
+           onkeydown="if(event.key==='Enter')sendObservation()">
     <button class="btn btn-send" onclick="sendObservation()">Envoyer</button>
   </div>
 </div>
 
 <!-- ══════════ JOURNAL ══════════ -->
-<div class="section">
+<div class="section section-journal">
   <span class="label">Dernières entrées journal</span>
   <ul class="journal-list" id="journal-list">
     <li class="journal-empty">Aucune entrée pour l'instant.</li>
@@ -433,6 +441,19 @@
     <div class="modal-actions">
       <button class="btn" onclick="closeMobEndModal()">Annuler</button>
       <button id="btn-mob-confirm" class="btn btn-mob-end-confirm">Maintenir pour confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ MODAL TRIP INACTIF ══════════ -->
+<div id="no-trip-modal" class="modal-overlay" style="display:none">
+  <div class="modal-card">
+    <h2 class="modal-title">VOUS ÊTES À L'ARRÊT</h2>
+    <p class="mob-modal-body">Voulez-vous démarrer un nouveau trip ?</p>
+    <p class="mob-modal-sub">Les contrôles de voiles, moteur et observations ne sont disponibles qu'en navigation.</p>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeNoTripModal()">Rester à l'arrêt</button>
+      <button class="btn btn-confirm" onclick="closeNoTripModal(); handleDeparture()">Départ</button>
     </div>
   </div>
 </div>

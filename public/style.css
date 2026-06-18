@@ -245,7 +245,7 @@ body {
 
 /* ──── Dernière entrée journal (feedback) ──── */
 .last-entry {
-  background: var(--bg-primary);
+  background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
   padding: 5px 16px;
   display: flex;
@@ -288,9 +288,12 @@ body {
 
 /* ──── Sections ──── */
 .section {
-  background: var(--bg-surface);
-  border-bottom: 2px solid var(--border);
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border);
   padding: 14px 16px;
+}
+.section-journal {
+  background: var(--bg-surface);
 }
 
 .section-grid {
@@ -617,6 +620,27 @@ body {
   margin-top: 10px;
 }
 
+.obs-input {
+  flex: 1;
+  height: 48px;
+  background: var(--bg-elevated);
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: 'Barlow', sans-serif;
+  font-size: 16px;
+  font-weight: 500;
+  padding: 0 14px;
+}
+
+.obs-input:focus {
+  border-color: var(--accent-cyan);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 212, 242, 0.18);
+}
+
+.obs-input::placeholder { color: var(--text-dim); }
+
 textarea {
   flex: 1;
   background: var(--bg-elevated);
@@ -640,9 +664,20 @@ textarea:focus {
 textarea::placeholder { color: var(--text-dim); }
 
 .btn-send {
-  align-self: flex-end;
   min-height: 48px;
+  height: 48px;
   padding: 0 16px;
+}
+
+/* ──── Mode sans trip actif ──── */
+body.no-trip .prop-seg,
+body.no-trip .prop-affaler,
+body.no-trip #motor-h,
+body.no-trip .obs-input,
+body.no-trip .btn-send {
+  opacity: 0.35;
+  filter: grayscale(0.4);
+  cursor: not-allowed;
 }
 
 /* ──── Journal ──── */
@@ -828,6 +863,44 @@ textarea::placeholder { color: var(--text-dim); }
 }
 .prop-motor-row.on .prop-motor-status { color: var(--accent-amber); }
 
+/* ── Moteur — bande horizontale sous les voiles ── */
+.prop-motor-h {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 14px;
+  transition: background 0.25s, border-color 0.25s;
+}
+.prop-motor-h-title {
+  flex: 1;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  transition: color 0.25s;
+}
+.prop-motor-h .prop-motor-track { flex: 0 0 140px; }
+.prop-motor-h.on {
+  background: var(--accent-amber);
+  border-color: var(--accent-amber);
+}
+.prop-motor-h.on .prop-motor-h-title { color: rgba(0,0,0,0.70); }
+html.sun-mode .prop-motor-h.on .prop-motor-h-title { color: #fff; }
+.prop-motor-h.on .prop-motor-track {
+  background: rgba(0,0,0,0.18);
+  border-color: rgba(0,0,0,0.25);
+  box-shadow: none;
+}
+.prop-motor-h.on .prop-motor-track .prop-knob { background: rgba(255,255,255,0.90); }
+.prop-motor-h.on .prop-motor-track .prop-lbl-on  { color: rgba(0,0,0,0.65); }
+.prop-motor-h.on .prop-motor-track .prop-lbl-off { color: rgba(0,0,0,0.30); }
+
 /* ── Jauges côte à côte ── */
 .prop-gauges {
   display: flex;
@@ -840,22 +913,25 @@ textarea::placeholder { color: var(--text-dim); }
   flex-direction: column;
 }
 
-.prop-col-label {
+.prop-box-title {
   font-family: 'Barlow Condensed', sans-serif;
   font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 0.14em;
+  font-size: 15px;
+  letter-spacing: 0.10em;
   text-transform: uppercase;
   color: var(--text-secondary);
   text-align: center;
-  margin-bottom: 6px;
+  padding: 7px 4px 6px;
+  border-bottom: 1px solid var(--border);
+  margin: -4px -4px 1px -4px;
+  border-radius: 6px 6px 0 0;
 }
 
 .prop-track {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  background: var(--bg-primary);
+  background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 4px;
@@ -904,59 +980,57 @@ textarea::placeholder { color: var(--text-dim); }
 .prop-seg.fill .prop-seg-icon { color: #52C87A; }
 .prop-seg.fill .prop-seg-name { color: #52C87A; }
 
-/* Segment sélectionné (sommet du remplissage) */
+/* Segment sélectionné — fond vert plein, texte contrasté */
 .prop-seg.selected {
-  background: var(--accent-sail-dim);
+  background: var(--accent-sail);
   border-color: var(--accent-sail);
-  box-shadow: 0 0 14px rgba(46,204,113,0.25), inset 0 1px 0 rgba(80,255,130,0.25);
+  box-shadow: none;
 }
-.prop-seg.selected .prop-seg-icon { color: var(--accent-sail); }
-.prop-seg.selected .prop-seg-name { color: var(--accent-sail); }
+.prop-seg.selected .prop-seg-icon,
+.prop-seg.selected .prop-seg-name { color: rgba(0,0,0,0.75); }
 
-/* Ligne de surface sur le segment sélectionné */
-.prop-seg.selected::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: linear-gradient(90deg,
-    transparent 0%,
-    rgba(60,220,100,0.5) 20%,
-    rgba(46,204,113,0.95) 50%,
-    rgba(60,220,100,0.5) 80%,
-    transparent 100%);
-}
+html.sun-mode .prop-seg.selected .prop-seg-icon,
+html.sun-mode .prop-seg.selected .prop-seg-name { color: #fff; }
+
+.prop-seg.selected::before { content: none; }
 
 .prop-seg:active { opacity: 0.7; }
 
 /* ── Bouton affalée ── */
 .prop-affaler {
   margin-top: 6px;
-  height: 48px;
+  height: 34px;
   width: 100%;
-  background: var(--bg-elevated);
-  border: 2px solid var(--border);
-  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: var(--bg-primary);
+  border: 1.5px dashed var(--border);
+  border-radius: 20px;
   color: var(--text-dim);
   font-family: 'Barlow Condensed', sans-serif;
   font-weight: 700;
-  font-size: 13px;
+  font-size: 12px;
   letter-spacing: 0.09em;
   text-transform: uppercase;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: border-color 0.15s, color 0.15s;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
 }
-.prop-affaler:active { opacity: 0.7; }
+.prop-affaler:active { opacity: 0.65; }
 .prop-affaler.current {
-  border-color: var(--border-bright);
-  color: var(--text-secondary);
+  border-style: solid;
+  border-color: var(--accent-sail);
+  background: var(--accent-sail);
+  color: #fff;
 }
 
 /* ── Texte d'état ── */
 .prop-state {
   text-align: center;
-  margin-top: 6px;
+  margin-top: 2px;
+  margin-bottom: 5px;
   height: 18px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;

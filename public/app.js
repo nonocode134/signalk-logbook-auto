@@ -64,6 +64,9 @@ function updateValue (id, text) {
   el.classList.add('value-updated')
 }
 
+// ──── État trip ────
+let _tripActive = false
+
 // ──── État moteur ────
 let _motorOn = false
 
@@ -74,12 +77,11 @@ function setMotorState (state) {
 
 function _renderMotor (isOn) {
   document.getElementById('motor-track')?.classList.toggle('on', isOn)
-  document.getElementById('motor-row')?.classList.toggle('on', isOn)
-  const s = document.getElementById('motor-status')
-  if (s) s.textContent = isOn ? 'ON' : 'OFF'
+  document.getElementById('motor-h')?.classList.toggle('on', isOn)
 }
 
 function handleMotorToggle () {
+  if (!_tripActive) { showNoTripModal(); return }
   vibrate(20)
   _motorOn = !_motorOn
   _renderMotor(_motorOn)
@@ -90,7 +92,7 @@ function handleMotorToggle () {
 // level : 0=plein  1=1ris  2=2ris  3=3ris  4=affalé(e)
 const _sailLevel = { gv: 4, gen: 4 }
 const _SAIL_LABELS = {
-  gv:  ['Plein', '1 ris', '2 ris', '3 ris', 'Affalée'],
+  gv:  ['Pleine', '1 ris', '2 ris', '3 ris', 'Affalée'],
   gen: ['Plein', '1 ris', '2 ris', '3 ris', 'Affalé']
 }
 
@@ -126,6 +128,7 @@ function setGenoisButton (reefs) {
 
 // Appelé par les segments de la jauge (onclick dans le HTML)
 function handleSailGauge (sail, level) {
+  if (!_tripActive) { showNoTripModal(); return }
   vibrate(15)
   _sailLevel[sail] = level
   _renderSailGauge(sail, level)
@@ -263,13 +266,25 @@ async function confirmArrival () {
 }
 
 function _updateTripButtons (hasActiveTrip) {
+  _tripActive = hasActiveTrip
+  document.body.classList.toggle('no-trip', !hasActiveTrip)
   const dep = document.getElementById('btn-departure')
   const arr = document.getElementById('btn-arrival')
   if (dep) dep.style.display = hasActiveTrip ? 'none' : ''
   if (arr) arr.style.display = hasActiveTrip ? '' : 'none'
 }
 
+function showNoTripModal () {
+  vibrate(30)
+  document.getElementById('no-trip-modal').style.display = 'flex'
+}
+
+function closeNoTripModal () {
+  document.getElementById('no-trip-modal').style.display = 'none'
+}
+
 function sendObservation () {
+  if (!_tripActive) { showNoTripModal(); return }
   const el = document.getElementById('observation-text')
   const text = el?.value?.trim()
   if (!text) return
