@@ -2,13 +2,88 @@
 
 const API_BASE = '/plugins/signalk-logbook-auto'
 
+// ──── Auth SignalK ────
+let _authToken = sessionStorage.getItem('sk_token') || null
+
+function _authHeaders () {
+  return _authToken ? { 'Authorization': `JWT ${_authToken}` } : {}
+}
+
+async function authFetch (url, opts = {}) {
+  opts.headers = { ..._authHeaders(), ...opts.headers }
+  const res = await fetch(url, opts)
+  if (res.status === 401) {
+    _authToken = null
+    sessionStorage.removeItem('sk_token')
+    showLoginOverlay()
+    throw new Error('unauthorized')
+  }
+  return res
+}
+
+function showLoginOverlay () {
+  document.getElementById('login-overlay').style.display = 'flex'
+}
+
+function hideLoginOverlay () {
+  document.getElementById('login-overlay').style.display = 'none'
+}
+
+async function doLogin (e) {
+  e.preventDefault()
+  const username = document.getElementById('login-username').value.trim()
+  const password = document.getElementById('login-password').value
+  const errEl = document.getElementById('login-error')
+  const btn = document.getElementById('login-btn')
+
+  errEl.style.display = 'none'
+  btn.disabled = true
+  btn.textContent = '…'
+
+  try {
+    const res = await fetch('/signalk/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    })
+    if (res.ok) {
+      const data = await res.json()
+      _authToken = data.token
+      sessionStorage.setItem('sk_token', _authToken)
+      hideLoginOverlay()
+      _initApp()
+    } else {
+      errEl.textContent = res.status === 401 ? 'Identifiants incorrects' : `Erreur serveur (${res.status})`
+      errEl.style.display = 'block'
+    }
+  } catch {
+    errEl.textContent = 'Impossible de contacter le serveur SignalK'
+    errEl.style.display = 'block'
+  } finally {
+    btn.disabled = false
+    btn.textContent = 'SE CONNECTER'
+  }
+}
+
+let _appStarted = false
+function _initApp () {
+  if (_appStarted) return
+  _appStarted = true
+  connectWebSocket()
+  loadInitialStatus()
+  refreshJournal()
+  setInterval(refreshJournal, 30000)
+  setInterval(loadInitialStatus, 10000)
+}
+
 // ──── WebSocket Signal K ────
 let ws = null
 let wsReconnectTimer = null
 
 function connectWebSocket () {
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const url = `${proto}//${window.location.host}/signalk/v1/stream`
+  const tokenParam = _authToken ? `?token=${encodeURIComponent(_authToken)}` : ''
+  const url = `${proto}//${window.location.host}/signalk/v1/stream${tokenParam}`
   ws = new WebSocket(url)
 
   ws.onmessage = (e) => {
@@ -150,7 +225,7 @@ async function handleDeparture () {
   vibrate(20)
   flashBtn('btn-departure')
   try {
-    const res = await fetch(`${API_BASE}/api/trip/start`, {
+    const res = await authFetch(`${API_BASE}/api/trip/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ timestamp: new Date().toISOString() })
@@ -254,7 +329,7 @@ async function confirmArrival () {
   if (obs) body.observation = obs
 
   try {
-    await fetch(`${API_BASE}/api/trip/end`, {
+    await authFetch(`${API_BASE}/api/trip/end`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
@@ -290,7 +365,7 @@ function sendObservation () {
   if (!text) return
   vibrate(15)
 
-  fetch(`${API_BASE}/api/observation`, {
+  authFetch(`${API_BASE}/api/observation`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, timestamp: new Date().toISOString() })
@@ -302,7 +377,7 @@ function sendObservation () {
 
 async function postState (type, value) {
   try {
-    await fetch(`${API_BASE}/api/state`, {
+    await authFetch(`${API_BASE}/api/state`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type, value, timestamp: new Date().toISOString() })
@@ -313,7 +388,7 @@ async function postState (type, value) {
 // ──── Journal ────
 async function refreshJournal () {
   try {
-    const res = await fetch(`${API_BASE}/api/logbook/recent`)
+    const res = await authFetch(`${API_BASE}/api/logbook/recent`)
     const entries = await res.json()
     renderJournal(entries)
   } catch (e) { console.error('journal fetch error:', e) }
@@ -391,7 +466,7 @@ function _buildJournalDetails (entry) {
 // ──── Chargement initial du statut ────
 async function loadInitialStatus () {
   try {
-    const res = await fetch(`${API_BASE}/api/status`)
+    const res = await authFetch(`${API_BASE}/api/status`)
     const status = await res.json()
 
     // Restaure l'état MOB si une alerte est active (ex. après rechargement de page)
@@ -510,7 +585,7 @@ async function confirmMobStart () {
 
 async function _triggerMob () {
   try {
-    const res = await fetch(`${API_BASE}/api/mob/start`, {
+    const res = await authFetch(`${API_BASE}/api/mob/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ timestamp: new Date().toISOString() })
@@ -595,7 +670,7 @@ function cancelMobConfirmPress () {
 
 async function _endMob () {
   try {
-    const res = await fetch(`${API_BASE}/api/mob/end`, {
+    const res = await authFetch(`${API_BASE}/api/mob/end`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ timestamp: new Date().toISOString() })
@@ -627,9 +702,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.documentElement.classList.add('sun-mode')
   }
 
-  connectWebSocket()
-  loadInitialStatus()
-  refreshJournal()
+  _initApp()
 
   // MOB : tap → modal confirmation (inactif) | long-press 3 s → FIN MOB (actif)
   const mobBtn = document.getElementById('btn-mob')
@@ -668,7 +741,4 @@ document.addEventListener('DOMContentLoaded', () => {
     })
   }
 
-  // Rafraîchir le journal toutes les 30s et le statut toutes les 10s
-  setInterval(refreshJournal, 30000)
-  setInterval(loadInitialStatus, 10000)
 })
